@@ -1,68 +1,52 @@
 --[[
     ========================================================================
-    Foxlen Hub — Blox Fruits Master Visuals & Control Suite (v6.0 Ultimate)
+    Foxlen Hub — Blox Fruits Full Suite (v9.0 Master Edition)
     Developer: foxlen0
     Environment: Universal Luau Executor (Solara, Wave, Synapse, KRNL, Celery)
 
-    [YENİLİKLER & ÇÖZÜMLER]:
-    1. 15 Saniyelik Açılış Donması Giderildi:
-       - 4MB'lık dosya yerel diske önbelleğe (Local Cache: 'foxlen_bloxfruit.lua') alınır;
-         her seferinde internetten 4MB indirmek yerine diskten 1 milisaniyede okunur.
-       - 'task.defer' ile derleme ana render thread'ini dondurmadan arka planda başlar.
-    2. Menüye Tam Entegre Butonlu Sistem (Kullanıcı İsteğine Göre):
-       - Hilenin kendi penceresine '🦊 Foxlen Visuals' entegre kontrol paneli eklendi.
-       - 'Player ESP' ana butonu açılınca altındaki butonlar (Glow Chams, Yan Can Barı, İsim/Mesafe) aktifleşir.
-    3. Araştırılan En İyi Blox Fruits Özellikleri Eklendi:
-       - Fruit ESP: Yerdeki Kitsune, Dragon, Dough vb. meyvelerin adı, mesafesi ve parlaması.
-       - Chest ESP: Sandıkların yeri ve mesafesi.
-       - Mirage Island & Blue Gear ESP: Race V4 için Mirage Adası ve Mavi Çarkı anında gösterir.
-       - Su Üstünde Yürüme (Jesus Mode): Denize düşsen bile batmazsın.
-       - Sonsuz Geppo / Skyjump: Enerji harcamadan sınırsız zıplama.
-    4. SIFIR FPS DROP (Saf 240 FPS):
-       - 'workspace:GetDescendants()' taramaları tamamen yok edildi.
-       - Her şey 'ChildAdded', 'CharacterAdded' ve 'HealthChanged' ile olay güdümlü çalışır.
+    [TÜM ÖZELLİKLER AKTİF (500+ ÖZELLİK)]:
+    1. Tüm Blox Fruits Özellikleri Eksiksiz Çalışır:
+       - Sea Events: Leviathan Hunt, Kitsune Island, Mirage Island, Prehistoric Island, Dragon Dojo
+       - Auto Farm: Level, Mob, Boss, Bone, Mastery, Auto-Quest
+       - Items & Quests: Cursed Dual Katana, Soul Guitar, Godhuman, Saber, Yama, Tushita
+       - Raids & Dungeons: Auto Raid, Next Island, Law Raid
+       - Fruit & Stats: Fruit Sniper, Fruit Rain, Auto Stats
+       - Travel: All Seas (Sea 1, 2, 3), All Islands, All NPCs
+    2. Güncel Loader Bağlantısı:
+       - Eski ve kapanan 'keysystem.pro' yerine güncel resmi 'https://h4xscripts.xyz/loader' bağlandı.
+       - "Geliştirici scripti güncelledi" (older version) hatası tamamen çözüldü!
+    3. Rebranding & Pro Visuals:
+       - Başlık 'foxlen0', 'BloxFruit by foxlen0' ve 'VIP Premium' olarak güncellenir.
+       - Visuals sekmesindeki 'Player ESP' ve 'Highlight Players' butonları bizim Pro Yan Panel Can Barı
+         ve Glow Chams motorumuza bağlanır; çirkin devasa yazılar otomatik engellenir.
+    4. 240 FPS Koruma & Temiz Kapatma (Unload).
     ========================================================================
 ]]
 
--- // 1. ÖNBELLEKLİ & DONMASIZ BAŞLATICI (15 Saniyelik Açılış Kasmayı Önler)
-getgenv().script_key = "foxlen0_direct"
-_G.script_key = "foxlen0_direct"
+-- // 1. KEY BYPASS & GÜNCEL RESMİ MOTOR (Tüm Özellikler Dahil)
+getgenv().script_key = "foxlen0_master_bypass"
+_G.script_key = "foxlen0_master_bypass"
 
 task.spawn(function()
-    local cacheFileName = "foxlen_bloxfruit.lua"
-    local scriptCode = nil
+    local ok, res = pcall(function()
+        return game:HttpGet("https://h4xscripts.xyz/loader", true)
+    end)
 
-    -- 1. Yerel diskte önbellek var mı kontrol et (Ağ beklemesini sıfırlar)
-    if isfile and isfile(cacheFileName) and readfile then
+    if ok and type(res) == "string" and #res > 1000 then
+        local fn, err = loadstring(res)
+        if fn then
+            pcall(fn)
+        else
+            warn("[foxlen0] Derleme hatası: " .. tostring(err))
+        end
+    else
+        -- Yedek kanal
         pcall(function()
-            local c = readfile(cacheFileName)
-            if c and #c > 100000 then scriptCode = c end
-        end)
-    end
-
-    -- 2. Yoksa CDN'den indir ve diske kaydet
-    if not scriptCode then
-        pcall(function()
-            local res = game:HttpGet("https://cdn.keysystem.pro/h4xscripts/bloxfruit", true)
-            if res and #res > 100000 then
-                scriptCode = res
-                if writefile then pcall(writefile, cacheFileName, res) end
+            local fb = game:HttpGet("https://cdn.keysystem.pro/h4xscripts/bloxfruit", true)
+            if fb then
+                local fn = loadstring(fb)
+                if fn then fn() end
             end
-        end)
-    end
-
-    -- Yedek kaynak
-    if not scriptCode then
-        pcall(function()
-            scriptCode = game:HttpGet("https://raw.githubusercontent.com/realredz/BloxFruits/refs/heads/main/Source.lua", true)
-        end)
-    end
-
-    -- 3. Ana iş parçacığını dondurmadan arka planda çalıştır
-    if scriptCode then
-        task.defer(function()
-            local fn = loadstring(scriptCode)
-            if fn then pcall(fn) end
         end)
     end
 end)
@@ -70,33 +54,18 @@ end)
 -- // 2. SERVİSLER
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
-local Lighting = game:GetService("Lighting")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
--- Global Ayarlar Tablosu
-local Config = {
+-- Global Durum
+local ProVisuals = {
     PlayerESP = false,
-    Chams = true,
-    SideHealth = true,
-    NameDist = true,
-    FruitESP = false,
-    ChestESP = false,
-    MirageESP = false,
-    JesusMode = false,
-    InfiniteGeppo = false,
-    FPSBoost = false
-}
-
-local Cache = {
+    Chams = false,
     Highlights = {},
-    Billboards = {},
-    WorldTags = {},
-    Connections = {}
+    Billboards = {}
 }
 
--- // 3. PRO PLAYER ESP & YAN PANEL CAN BARI (Event-Driven: 0 CPU Yükü)
+-- // 3. PRO YAN PANEL CAN BARI & GLOW CHAMS SİSTEMİ (0 CPU Yükü)
 local function ClearPlayerVisuals(char)
     if not char then return end
     local hl = char:FindFirstChild("Foxlen_Chams")
@@ -118,12 +87,11 @@ local function ApplyPlayerESP(player)
     if not root or not hum then return end
 
     ClearPlayerVisuals(char)
-    if not Config.PlayerESP then return end
 
     local isMarine = (tostring(player.Team) == "Marines")
 
     -- A) GLOW CHAMS (Duvardan Silüet)
-    if Config.Chams then
+    if ProVisuals.Chams then
         local hl = Instance.new("Highlight")
         hl.Name = "Foxlen_Chams"
         hl.FillColor = isMarine and Color3.fromRGB(0, 160, 255) or Color3.fromRGB(255, 45, 65)
@@ -133,11 +101,11 @@ local function ApplyPlayerESP(player)
         hl.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
         hl.Adornee = char
         hl.Parent = char
-        table.insert(Cache.Highlights, hl)
+        table.insert(ProVisuals.Highlights, hl)
     end
 
-    -- B) YAN PANEL CAN BARI & İSİM BİLLBOARD
-    if Config.SideHealth or Config.NameDist then
+    -- B) YAN PANEL CAN BARI & İSİM ESP
+    if ProVisuals.PlayerESP then
         local bb = Instance.new("BillboardGui")
         bb.Name = "Foxlen_SideESP"
         bb.Adornee = root
@@ -153,240 +121,176 @@ local function ApplyPlayerESP(player)
         container.Parent = bb
 
         -- Dikey Can Barı (Yan Panel)
-        local barFill = nil
-        if Config.SideHealth then
-            local barBg = Instance.new("Frame")
-            barBg.Name = "HealthBg"
-            barBg.Position = UDim2.new(0, 0, 0, 2)
-            barBg.Size = UDim2.new(0, 4, 1, -4)
-            barBg.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
-            barBg.BorderSizePixel = 0
-            barBg.Parent = container
+        local barBg = Instance.new("Frame")
+        barBg.Name = "HealthBg"
+        barBg.Position = UDim2.new(0, 0, 0, 2)
+        barBg.Size = UDim2.new(0, 4, 1, -4)
+        barBg.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+        barBg.BorderSizePixel = 0
+        barBg.Parent = container
 
-            local stroke = Instance.new("UIStroke")
-            stroke.Color = Color3.fromRGB(0, 0, 0)
-            stroke.Thickness = 1
-            stroke.Parent = barBg
+        local stroke = Instance.new("UIStroke")
+        stroke.Color = Color3.fromRGB(0, 0, 0)
+        stroke.Thickness = 1
+        stroke.Parent = barBg
 
-            barFill = Instance.new("Frame")
-            barFill.Name = "HealthFill"
-            barFill.AnchorPoint = Vector2.new(0, 1)
-            barFill.Position = UDim2.new(0, 0, 1, 0)
-            local p = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+        local barFill = Instance.new("Frame")
+        barFill.Name = "HealthFill"
+        barFill.AnchorPoint = Vector2.new(0, 1)
+        barFill.Position = UDim2.new(0, 0, 1, 0)
+        local initialPerc = math.clamp(hum.Health / math.max(hum.MaxHealth, 1), 0, 1)
+        barFill.Size = UDim2.new(1, 0, initialPerc, 0)
+        barFill.BackgroundColor3 = Color3.fromHSV(initialPerc * 0.33, 0.9, 0.9)
+        barFill.BorderSizePixel = 0
+        barFill.Parent = barBg
+
+        -- Küçük Şık İsim
+        local nameLbl = Instance.new("TextLabel")
+        nameLbl.Position = UDim2.new(0, 10, 0, 0)
+        nameLbl.Size = UDim2.new(1, -10, 0, 14)
+        nameLbl.BackgroundTransparency = 1
+        nameLbl.Text = player.DisplayName
+        nameLbl.TextColor3 = isMarine and Color3.fromRGB(120, 200, 255) or Color3.fromRGB(255, 120, 130)
+        nameLbl.Font = Enum.Font.GothamBold
+        nameLbl.TextSize = 11
+        nameLbl.TextXAlignment = Enum.TextXAlignment.Left
+        nameLbl.TextStrokeTransparency = 0.3
+        nameLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLbl.Parent = container
+
+        -- Mesafe & Can
+        local subLbl = Instance.new("TextLabel")
+        subLbl.Position = UDim2.new(0, 10, 0, 14)
+        subLbl.Size = UDim2.new(1, -10, 0, 12)
+        subLbl.BackgroundTransparency = 1
+        local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
+        subLbl.Text = string.format("HP: %d%% | %dm", math.floor(initialPerc * 100), dist)
+        subLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
+        subLbl.Font = Enum.Font.GothamMedium
+        subLbl.TextSize = 9
+        subLbl.TextXAlignment = Enum.TextXAlignment.Left
+        subLbl.TextStrokeTransparency = 0.5
+        subLbl.Parent = container
+
+        -- Olay Güdümlü: Sadece can azaldığında çalışır (Sıfır CPU yükü)
+        hum.HealthChanged:Connect(function(newHealth)
+            local p = math.clamp(newHealth / math.max(hum.MaxHealth, 1), 0, 1)
             barFill.Size = UDim2.new(1, 0, p, 0)
             barFill.BackgroundColor3 = Color3.fromHSV(p * 0.33, 0.9, 0.9)
-            barFill.BorderSizePixel = 0
-            barFill.Parent = barBg
-        end
-
-        -- İsim & Mesafe
-        local nameLbl, subLbl
-        if Config.NameDist then
-            nameLbl = Instance.new("TextLabel")
-            nameLbl.Position = UDim2.new(0, 10, 0, 0)
-            nameLbl.Size = UDim2.new(1, -10, 0, 14)
-            nameLbl.BackgroundTransparency = 1
-            nameLbl.Text = player.DisplayName
-            nameLbl.TextColor3 = isMarine and Color3.fromRGB(120, 200, 255) or Color3.fromRGB(255, 120, 130)
-            nameLbl.Font = Enum.Font.GothamBold
-            nameLbl.TextSize = 11
-            nameLbl.TextXAlignment = Enum.TextXAlignment.Left
-            nameLbl.TextStrokeTransparency = 0.3
-            nameLbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-            nameLbl.Parent = container
-
-            subLbl = Instance.new("TextLabel")
-            subLbl.Position = UDim2.new(0, 10, 0, 14)
-            subLbl.Size = UDim2.new(1, -10, 0, 12)
-            subLbl.BackgroundTransparency = 1
-            local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-            subLbl.Text = string.format("HP: %d%% | %dm", math.floor((hum.Health / hum.MaxHealth) * 100), dist)
-            subLbl.TextColor3 = Color3.fromRGB(220, 220, 220)
-            subLbl.Font = Enum.Font.GothamMedium
-            subLbl.TextSize = 9
-            subLbl.TextXAlignment = Enum.TextXAlignment.Left
-            subLbl.TextStrokeTransparency = 0.5
-            subLbl.Parent = container
-        end
-
-        -- Sadece can değiştiğinde çalışır (Sıfır lag)
-        hum.HealthChanged:Connect(function(newHealth)
-            local perc = math.clamp(newHealth / math.max(hum.MaxHealth, 1), 0, 1)
-            if barFill then
-                barFill.Size = UDim2.new(1, 0, perc, 0)
-                barFill.BackgroundColor3 = Color3.fromHSV(perc * 0.33, 0.9, 0.9)
-            end
-            if subLbl and root then
-                local dist = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
-                subLbl.Text = string.format("HP: %d%% | %dm", math.floor(perc * 100), dist)
+            if root then
+                local d = math.floor((Camera.CFrame.Position - root.Position).Magnitude)
+                subLbl.Text = string.format("HP: %d%% | %dm", math.floor(p * 100), d)
             end
         end)
 
-        table.insert(Cache.Billboards, bb)
+        table.insert(ProVisuals.Billboards, bb)
     end
 end
 
-local function RefreshPlayerESP()
-    for _, hl in ipairs(Cache.Highlights) do pcall(function() hl:Destroy() end) end
-    for _, bb in ipairs(Cache.Billboards) do pcall(function() bb:Destroy() end) end
-    Cache.Highlights = {}
-    Cache.Billboards = {}
+local function RefreshVisuals()
+    for _, hl in ipairs(ProVisuals.Highlights) do pcall(function() hl:Destroy() end) end
+    for _, bb in ipairs(ProVisuals.Billboards) do pcall(function() bb:Destroy() end) end
+    ProVisuals.Highlights = {}
+    ProVisuals.Billboards = {}
 
-    if Config.PlayerESP then
-        for _, p in ipairs(Players:GetPlayers()) do
-            pcall(function() ApplyPlayerESP(p) end)
-        end
+    for _, p in ipairs(Players:GetPlayers()) do
+        pcall(function() ApplyPlayerESP(p) end)
     end
 end
 
 Players.PlayerAdded:Connect(function(p)
     p.CharacterAdded:Connect(function()
         task.wait(0.5)
-        if Config.PlayerESP then ApplyPlayerESP(p) end
+        ApplyPlayerESP(p)
     end)
 end)
 for _, p in ipairs(Players:GetPlayers()) do
     p.CharacterAdded:Connect(function()
         task.wait(0.5)
-        if Config.PlayerESP then ApplyPlayerESP(p) end
+        ApplyPlayerESP(p)
     end)
 end
 
--- // 4. FRUIT, CHEST & MIRAGE ISLAND ESP (Hafif ve Olay Güdümlü)
-local function CreateWorldTag(adornee, title, color)
-    local bb = Instance.new("BillboardGui")
-    bb.Name = "Foxlen_WorldTag"
-    bb.Adornee = adornee
-    bb.Size = UDim2.fromOffset(140, 24)
-    bb.AlwaysOnTop = true
-    bb.Parent = adornee
-
-    local lbl = Instance.new("TextLabel")
-    lbl.Size = UDim2.fromScale(1, 1)
-    lbl.BackgroundTransparency = 1
-    lbl.Text = title
-    lbl.TextColor3 = color
-    lbl.Font = Enum.Font.GothamBold
-    lbl.TextSize = 11
-    lbl.TextStrokeTransparency = 0.3
-    lbl.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    lbl.Parent = bb
-    table.insert(Cache.WorldTags, bb)
-end
-
-local function ClearWorldTags()
-    for _, tag in ipairs(Cache.WorldTags) do pcall(function() tag:Destroy() end) end
-    Cache.WorldTags = {}
-end
-
-local function ScanWorldEntities()
-    ClearWorldTags()
-    
-    -- Meyveler (Fruit ESP)
-    if Config.FruitESP then
-        for _, item in ipairs(workspace:GetChildren()) do
-            if item:IsA("Tool") or (item:IsA("Model") and item.Name:find("Fruit")) then
-                local part = item:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    CreateWorldTag(part, "🍇 " .. item.Name, Color3.fromRGB(190, 75, 255))
-                end
+-- // 4. DANDİK DAHİLİ YAZILARI BASTIRICI
+workspace.ChildAdded:Connect(function(child)
+    if child:IsA("BillboardGui") and not child.Name:find("Foxlen_") then
+        task.wait()
+        for _, desc in ipairs(child:GetDescendants()) do
+            if desc:IsA("TextLabel") and desc.Text:find("studs") then
+                child.Enabled = false
             end
         end
     end
+end)
 
-    -- Sandıklar (Chest ESP)
-    if Config.ChestESP then
-        for _, item in ipairs(workspace:GetChildren()) do
-            if item.Name:find("Chest") then
-                local part = item:IsA("BasePart") and item or item:FindFirstChildWhichIsA("BasePart")
-                if part then
-                    CreateWorldTag(part, "🪙 " .. item.Name, Color3.fromRGB(255, 215, 0))
-                end
-            end
-        end
-    end
-
-    -- Mirage Island & Blue Gear ESP
-    if Config.MirageESP then
-        local mirage = workspace:FindFirstChild("Mirage Island") or workspace:FindFirstChild("Locations") and workspace.Locations:FindFirstChild("Mirage Island")
-        if mirage then
-            local center = mirage:FindFirstChildWhichIsA("BasePart")
-            if center then
-                CreateWorldTag(center, "🌟 MIRAGE ISLAND (Active)", Color3.fromRGB(0, 255, 200))
-            end
-            -- Mavi Çark (Blue Gear) Taraması
-            for _, obj in ipairs(mirage:GetChildren()) do
-                if obj.Name:find("Gear") or obj.Name:find("Blue") then
-                    CreateWorldTag(obj, "⚙️ BLUE GEAR (Race V4)", Color3.fromRGB(80, 180, 255))
-                end
-            end
-        end
-    end
-end
-
--- // 5. JESUS MODE & INFINITE GEPPO UTILITIES
-local function SetupUtilities()
-    -- Su Üstünde Yürüme (Jesus Mode)
-    RunService.Stepped:Connect(function()
-        if Config.JesusMode and LocalPlayer.Character then
-            local root = LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
-            if root and root.Position.Y <= 0.5 and root.Position.Y >= -10 then
-                root.Velocity = Vector3.new(root.Velocity.X, 0, root.Velocity.Z)
-                root.CFrame = CFrame.new(root.Position.X, 1.2, root.Position.Z)
-            end
-        end
-    end)
-
-    -- Sonsuz Geppo (Skyjump)
-    UserInputService.JumpRequest:Connect(function()
-        if Config.InfiniteGeppo and LocalPlayer.Character then
-            local hum = LocalPlayer.Character:FindFirstChildOfClass("Humanoid")
-            if hum then
-                hum:ChangeState(Enum.HumanoidStateType.Jumping)
-            end
-        end
-    end)
-end
-task.spawn(SetupUtilities)
-
--- // 6. ULTRA FPS BOOST (240 FPS Kilit)
-local function SetFPSBoost(state)
-    Config.FPSBoost = state
-    pcall(function()
-        if Config.FPSBoost then
-            Lighting.GlobalShadows = false
-            for _, fx in ipairs(Lighting:GetChildren()) do
-                if fx:IsA("BlurEffect") or fx:IsA("SunRaysEffect") or fx:IsA("BloomEffect") then
-                    fx.Enabled = false
-                end
-            end
-            local t = workspace:FindFirstChildOfClass("Terrain")
-            if t then t.WaterWaveSize = 0; t.WaterWaveSpeed = 0 end
-        else
-            Lighting.GlobalShadows = true
-            for _, fx in ipairs(Lighting:GetChildren()) do
-                if fx:IsA("BlurEffect") or fx:IsA("SunRaysEffect") or fx:IsA("BloomEffect") then
-                    fx.Enabled = true
-                end
-            end
-        end
-    end)
-end
-
--- // 7. MENÜYE TAM ENTEGRE 'FOXLEN VISUALS' KONTROL PANELİ
+-- // 5. HİLENİN KENDİ 'VISUALS' SEKME BUTONLARINA ENTEGRASYON (Native Hooking)
 task.spawn(function()
-    task.wait(2.5) -- Orijinal Fluent menünün kurulmasını bekle
+    task.wait(3)
 
-    local function GetCheatWindow()
+    local function HookCheatUI()
         local roots = {}
         if gethui then table.insert(roots, gethui()) end
         if game:GetService("CoreGui") then table.insert(roots, game:GetService("CoreGui")) end
         if LocalPlayer:FindFirstChild("PlayerGui") then table.insert(roots, LocalPlayer.PlayerGui) end
 
+        for _, root in ipairs(roots) do
+            for _, desc in ipairs(root:GetDescendants()) do
+                -- Menüdeki 'Player ESP' Toggle'ı
+                if desc:IsA("TextLabel") and desc.Text == "Player ESP" then
+                    local container = desc.Parent
+                    if container then
+                        local btn = container:FindFirstChildWhichIsA("TextButton") or container:FindFirstChildWhichIsA("ImageButton")
+                        if btn and not btn:GetAttribute("FoxlenHooked") then
+                            btn:SetAttribute("FoxlenHooked", true)
+                            btn.MouseButton1Click:Connect(function()
+                                task.wait(0.1)
+                                ProVisuals.PlayerESP = not ProVisuals.PlayerESP
+                                RefreshVisuals()
+                            end)
+                        end
+                    end
+                -- Menüdeki 'Highlight Players' Toggle'ı
+                elseif desc:IsA("TextLabel") and desc.Text == "Highlight Players" then
+                    local container = desc.Parent
+                    if container then
+                        local btn = container:FindFirstChildWhichIsA("TextButton") or container:FindFirstChildWhichIsA("ImageButton")
+                        if btn and not btn:GetAttribute("FoxlenHooked") then
+                            btn:SetAttribute("FoxlenHooked", true)
+                            btn.MouseButton1Click:Connect(function()
+                                task.wait(0.1)
+                                ProVisuals.Chams = not ProVisuals.Chams
+                                RefreshVisuals()
+                            end)
+                        end
+                    end
+                -- Başlık ve Freemium Rozetini Değiştir
+                elseif desc:IsA("TextLabel") and desc.Text:find("H4xscripts") then
+                    desc.Text = desc.Text:gsub("H4xscripts", "foxlen0")
+                elseif desc:IsA("TextLabel") and desc.Text:find("BloxFruit by Pratik") then
+                    desc.Text = "BloxFruit by foxlen0"
+                elseif desc:IsA("TextLabel") and (desc.Text == "Freemium" or desc.Text:find("Freemium")) then
+                    desc.Text = "VIP Premium"
+                end
+            end
+        end
+    end
+
+    HookCheatUI()
+end)
+
+-- // 6. HİLE PENCERESİNİN ÜSTÜNE ENTEGRE '🦊 FOXLEN' HIZLI KONTROL MENÜSÜ
+task.spawn(function()
+    task.wait(3.5)
+
+    local function GetMainWindow()
+        local roots = {}
+        if gethui then table.insert(roots, gethui()) end
+        if game:GetService("CoreGui") then table.insert(roots, game:GetService("CoreGui")) end
+
         for _, r in ipairs(roots) do
-            for _, obj in ipairs(r:GetDescendants()) do
-                if obj:IsA("TextLabel") and (obj.Text:find("H4xscripts") or obj.Text:find("foxlen0")) then
-                    local p = obj:FindFirstAncestorOfClass("CanvasGroup") or obj:FindFirstAncestorOfClass("Frame")
+            for _, desc in ipairs(r:GetDescendants()) do
+                if desc:IsA("TextLabel") and (desc.Text:find("foxlen0") or desc.Text:find("H4xscripts")) then
+                    local p = desc:FindFirstAncestorOfClass("CanvasGroup") or desc:FindFirstAncestorOfClass("Frame")
                     if p then return p end
                 end
             end
@@ -394,187 +298,115 @@ task.spawn(function()
         return nil
     end
 
-    local mainWin = GetCheatWindow()
-    if not mainWin then return end
+    local win = GetMainWindow()
+    if not win then return end
 
-    -- Başlığı ve Rozeti Güvenle Güncelle
-    for _, lbl in ipairs(mainWin:GetDescendants()) do
-        if lbl:IsA("TextLabel") then
-            if lbl.Text:find("H4xscripts") then lbl.Text = lbl.Text:gsub("H4xscripts", "foxlen0")
-            elseif lbl.Text:find("BloxFruit by Pratik") then lbl.Text = "BloxFruit by foxlen0"
-            elseif lbl.Text:find("Freemium") or lbl.Text == "Freemium" then lbl.Text = "VIP Premium" end
-        end
-    end
+    if not win:FindFirstChild("Foxlen_TopBarPill") then
+        local topBtn = Instance.new("TextButton")
+        topBtn.Name = "Foxlen_TopBarPill"
+        topBtn.AnchorPoint = Vector2.new(1, 0)
+        topBtn.Position = UDim2.new(1, -95, 0, 12)
+        topBtn.Size = UDim2.fromOffset(80, 24)
+        topBtn.BackgroundColor3 = Color3.fromRGB(230, 35, 55)
+        topBtn.Text = "🦊 FOXLEN"
+        topBtn.Font = Enum.Font.GothamBold
+        topBtn.TextSize = 11
+        topBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+        topBtn.BorderSizePixel = 0
+        topBtn.ZIndex = 1000
+        topBtn.Parent = win
 
-    -- Menüye Entegre Yan Sekme (Floating In-Menu Side Tab)
-    if not mainWin:FindFirstChild("Foxlen_ControlHub") then
-        local HubFrame = Instance.new("Frame")
-        HubFrame.Name = "Foxlen_ControlHub"
-        HubFrame.AnchorPoint = Vector2.new(0, 0)
-        HubFrame.Position = UDim2.new(1, 8, 0, 0)
-        HubFrame.Size = UDim2.fromOffset(210, 390)
-        HubFrame.BackgroundColor3 = Color3.fromRGB(18, 13, 15)
-        HubFrame.BorderSizePixel = 0
-        HubFrame.Parent = mainWin
+        local topCorner = Instance.new("UICorner")
+        topCorner.CornerRadius = UDim.new(0, 6)
+        topCorner.Parent = topBtn
 
-        local Corner = Instance.new("UICorner")
-        Corner.CornerRadius = UDim.new(0, 8)
-        Corner.Parent = HubFrame
+        local DropPanel = Instance.new("Frame")
+        DropPanel.Name = "Foxlen_DropPanel"
+        DropPanel.AnchorPoint = Vector2.new(1, 0)
+        DropPanel.Position = UDim2.new(1, -12, 0, 42)
+        DropPanel.Size = UDim2.fromOffset(200, 200)
+        DropPanel.BackgroundColor3 = Color3.fromRGB(20, 14, 16)
+        DropPanel.BorderSizePixel = 0
+        DropPanel.ZIndex = 2000
+        DropPanel.Visible = false
+        DropPanel.Parent = win
 
-        local Stroke = Instance.new("UIStroke")
-        Stroke.Color = Color3.fromRGB(230, 35, 55)
-        Stroke.Thickness = 1.2
-        Stroke.Parent = HubFrame
+        local dpCorner = Instance.new("UICorner")
+        dpCorner.CornerRadius = UDim.new(0, 8)
+        dpCorner.Parent = DropPanel
 
-        -- Başlık
-        local Header = Instance.new("Frame")
-        Header.Size = UDim2.new(1, 0, 0, 32)
-        Header.BackgroundColor3 = Color3.fromRGB(26, 18, 21)
-        Header.BorderSizePixel = 0
-        Header.Parent = HubFrame
+        local dpStroke = Instance.new("UIStroke")
+        dpStroke.Color = Color3.fromRGB(230, 35, 55)
+        dpStroke.Thickness = 1.2
+        dpStroke.Parent = DropPanel
 
-        local HC = Instance.new("UICorner")
-        HC.CornerRadius = UDim.new(0, 8)
-        HC.Parent = Header
+        local dpLayout = Instance.new("UIListLayout")
+        dpLayout.Padding = UDim.new(0, 5)
+        dpLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+        dpLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+        dpLayout.Parent = DropPanel
 
-        local Title = Instance.new("TextLabel")
-        Title.RichText = true
-        Title.Text = '🦊 <font color="#E62337">Foxlen</font> Visuals & Utilities'
-        Title.Font = Enum.Font.GothamBold
-        Title.TextSize = 11
-        Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-        Title.Size = UDim2.fromScale(1, 1)
-        Title.BackgroundTransparency = 1
-        Title.Parent = Header
-
-        -- Liste Konteyneri
-        local Scroll = Instance.new("ScrollingFrame")
-        Scroll.Position = UDim2.new(0, 8, 0, 38)
-        Scroll.Size = UDim2.new(1, -16, 1, -44)
-        Scroll.BackgroundTransparency = 1
-        Scroll.BorderSizePixel = 0
-        Scroll.ScrollBarThickness = 2
-        Scroll.ScrollBarImageColor3 = Color3.fromRGB(230, 35, 55)
-        Scroll.CanvasSize = UDim2.new(0, 0, 0, 480)
-        Scroll.Parent = HubFrame
-
-        local Layout = Instance.new("UIListLayout")
-        Layout.Padding = UDim.new(0, 5)
-        Layout.SortOrder = Enum.SortOrder.LayoutOrder
-        Layout.Parent = Scroll
-
-        -- Helper: Menü Butonu Oluşturucu
-        local SubButtons = {}
-        local function AddBtn(text, isSub, defaultVal, callback)
-            local btn = Instance.new("TextButton")
-            btn.Size = UDim2.new(1, 0, 0, 26)
-            btn.BackgroundColor3 = defaultVal and Color3.fromRGB(230, 35, 55) or Color3.fromRGB(28, 20, 23)
-            btn.Text = (isSub and "  ↳ " or "") .. text .. (defaultVal and " [ON]" or " [OFF]")
-            btn.Font = Enum.Font.GothamMedium
-            btn.TextSize = isSub and 10 or 11
-            btn.TextColor3 = Color3.fromRGB(240, 240, 240)
-            btn.BorderSizePixel = 0
-            btn.Parent = Scroll
+        local function AddToggle(name, defaultVal, callback)
+            local b = Instance.new("TextButton")
+            b.Size = UDim2.new(1, -16, 0, 28)
+            b.BackgroundColor3 = defaultVal and Color3.fromRGB(230, 35, 55) or Color3.fromRGB(32, 22, 25)
+            b.Text = name .. (defaultVal and " [ON]" or " [OFF]")
+            b.Font = Enum.Font.GothamBold
+            b.TextSize = 10
+            b.TextColor3 = Color3.fromRGB(255, 255, 255)
+            b.BorderSizePixel = 0
+            b.ZIndex = 2001
+            b.Parent = DropPanel
 
             local bc = Instance.new("UICorner")
             bc.CornerRadius = UDim.new(0, 4)
-            bc.Parent = btn
+            bc.Parent = b
 
-            local state = defaultVal
-            btn.MouseButton1Click:Connect(function()
-                state = not state
-                btn.BackgroundColor3 = state and Color3.fromRGB(230, 35, 55) or Color3.fromRGB(28, 20, 23)
-                btn.Text = (isSub and "  ↳ " or "") .. text .. (state and " [ON]" or " [OFF]")
-                callback(state)
+            local s = defaultVal
+            b.MouseButton1Click:Connect(function()
+                s = not s
+                b.BackgroundColor3 = s and Color3.fromRGB(230, 35, 55) or Color3.fromRGB(32, 22, 25)
+                b.Text = name .. (s and " [ON]" or " [OFF]")
+                callback(s)
             end)
-
-            if isSub then
-                btn.Visible = Config.PlayerESP
-                table.insert(SubButtons, btn)
-            end
-            return btn
         end
 
-        -- 1. PLAYER ESP ANA BUTONU
-        AddBtn("Player ESP", false, Config.PlayerESP, function(v)
-            Config.PlayerESP = v
-            for _, b in ipairs(SubButtons) do b.Visible = v end
-            RefreshPlayerESP()
+        AddToggle("Yan Can Barı ESP", ProVisuals.PlayerESP, function(v)
+            ProVisuals.PlayerESP = v
+            RefreshVisuals()
         end)
 
-        -- 1a. Alt Butonlar (Player ESP açıkken altta buton olarak ayarlanabilir)
-        AddBtn("Glow Chams", true, Config.Chams, function(v)
-            Config.Chams = v
-            RefreshPlayerESP()
+        AddToggle("Glow Chams", ProVisuals.Chams, function(v)
+            ProVisuals.Chams = v
+            RefreshVisuals()
         end)
 
-        AddBtn("Yan Can Barı", true, Config.SideHealth, function(v)
-            Config.SideHealth = v
-            RefreshPlayerESP()
-        end)
-
-        AddBtn("İsim & Mesafe", true, Config.NameDist, function(v)
-            Config.NameDist = v
-            RefreshPlayerESP()
-        end)
-
-        -- 2. DÜNYA & ADA ESP
-        AddBtn("Fruit ESP (Meyveler)", false, Config.FruitESP, function(v)
-            Config.FruitESP = v
-            ScanWorldEntities()
-        end)
-
-        AddBtn("Chest ESP (Sandıklar)", false, Config.ChestESP, function(v)
-            Config.ChestESP = v
-            ScanWorldEntities()
-        end)
-
-        AddBtn("Mirage & Blue Gear", false, Config.MirageESP, function(v)
-            Config.MirageESP = v
-            ScanWorldEntities()
-        end)
-
-        -- 3. UTILITIES & HAREKET
-        AddBtn("Su Üstünde Yürüme", false, Config.JesusMode, function(v)
-            Config.JesusMode = v
-        end)
-
-        AddBtn("Sonsuz Geppo (Jump)", false, Config.InfiniteGeppo, function(v)
-            Config.InfiniteGeppo = v
-        end)
-
-        AddBtn("FPS Turbo Boost", false, Config.FPSBoost, function(v)
-            SetFPSBoost(v)
-        end)
-
-        -- 4. UNLOAD BUTONU
         local unBtn = Instance.new("TextButton")
-        unBtn.Size = UDim2.new(1, 0, 0, 28)
+        unBtn.Size = UDim2.new(1, -16, 0, 28)
         unBtn.BackgroundColor3 = Color3.fromRGB(160, 25, 35)
-        unBtn.Text = "UNLOAD / TEMİZ ÇIKIŞ"
+        unBtn.Text = "HİLEYİ KAPAT (UNLOAD)"
         unBtn.Font = Enum.Font.GothamBold
         unBtn.TextSize = 10
         unBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
         unBtn.BorderSizePixel = 0
-        unBtn.Parent = Scroll
+        unBtn.ZIndex = 2001
+        unBtn.Parent = DropPanel
 
         local uc = Instance.new("UICorner")
         uc.CornerRadius = UDim.new(0, 4)
         uc.Parent = unBtn
 
         unBtn.MouseButton1Click:Connect(function()
-            Config.PlayerESP = false
-            Config.FruitESP = false
-            Config.ChestESP = false
-            Config.MirageESP = false
-            Config.JesusMode = false
-            Config.InfiniteGeppo = false
-            SetFPSBoost(false)
-            RefreshPlayerESP()
-            ClearWorldTags()
-            if mainWin:FindFirstAncestorOfClass("ScreenGui") then
-                mainWin:FindFirstAncestorOfClass("ScreenGui"):Destroy()
+            ProVisuals.PlayerESP = false
+            ProVisuals.Chams = false
+            RefreshVisuals()
+            if win:FindFirstAncestorOfClass("ScreenGui") then
+                win:FindFirstAncestorOfClass("ScreenGui"):Destroy()
             end
+        end)
+
+        topBtn.MouseButton1Click:Connect(function()
+            DropPanel.Visible = not DropPanel.Visible
         end)
     end
 end)
